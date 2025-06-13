@@ -1,0 +1,7 @@
+{
+  "version": 3,
+  "sources": [],
+  "sections": [
+    {"offset": {"line": 14, "column": 0}, "map": {"version":3,"sources":[],"names":[],"mappings":"","debugId":null}},
+    {"offset": {"line": 20, "column": 0}, "map": {"version":3,"sources":["file:///C:/Users/KIIT/Desktop/dev-community/frontend/pages/_app.js"],"sourcesContent":["// // next-app/pages/_app.js\r\n// import Navbar from '../components/Navbar';\r\n// import '../styles/globals.css'; // if you have global styles\r\n\r\n// function MyApp({ Component, pageProps }) {\r\n//   return (\r\n//     <>\r\n//       <Navbar />\r\n//       <Component {...pageProps} />\r\n//     </>\r\n//   );\r\n// }\r\n\r\n// export default MyApp;\r\n\r\n// next-app/pages/_app.js\r\nimport Navbar from '../components/Navbar';\r\nimport '../styles/globals.css';\r\n\r\nfunction MyApp({ Component, pageProps }) {\r\n  return (\r\n    <>\r\n      <Navbar />\r\n      <div className=\"container mx-auto px-4 py-8\"> {/* Added a container for overall page content */}\r\n        <Component {...pageProps} />\r\n      </div>\r\n    </>\r\n  );\r\n}\r\n\r\nexport default MyApp;"],"names":[],"mappings":"AAAA,4BAA4B;AAC5B,6CAA6C;AAC7C,+DAA+D;AAE/D,6CAA6C;AAC7C,aAAa;AACb,SAAS;AACT,mBAAmB;AACnB,qCAAqC;AACrC,UAAU;AACV,OAAO;AACP,IAAI;AAEJ,wBAAwB;AAExB,yBAAyB;;;;;AACzB;;;;AAGA,SAAS,MAAM,EAAE,SAAS,EAAE,SAAS,EAAE;IACrC,qBACE;;0BACE,qKAAC,6GAAA,CAAA,UAAM;;;;;0BACP,qKAAC;gBAAI,WAAU;;oBAA8B;kCAC3C,qKAAC;wBAAW,GAAG,SAAS;;;;;;;;;;;;;;AAIhC;uCAEe","debugId":null}}]
+}
