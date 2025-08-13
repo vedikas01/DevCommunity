@@ -28,7 +28,7 @@ Its architecture supports secure authentication, efficient data handling, and se
 - **Database**: MongoDB Atlas
 - **Cloud Services**: Cloudinary (for media uploads)
 - **Auth**: JWT-based authentication
-- **Dev Tools**: ESLint, Nodemon
+- **Dev Tools**: Nodemon
 
 ---
 
@@ -119,7 +119,7 @@ CLOUDINARY_API_SECRET=your_api_secret
 ---
 ## 🤝 Contributing
 
-Always open to contributions to, whether it’s bug fixes, feature requests, documentation improvements, or design suggestions — all are appreciated.
+Always open to contributions, whether it’s bug fixes, feature requests, documentation improvements, or design suggestions — all are appreciated.
 
 ### Contribution Workflow
 1. **Fork** the repository  
