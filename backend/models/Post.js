@@ -8,6 +8,13 @@ const PostSchema = new Schema({
   tags: [String],
   upvotes : [{type : Schema.Types.ObjectId, ref: 'User'}],
   downvotes : [{type : Schema.Types.ObjectId, ref: 'User'}],
+  attachments: [{
+    filename: String,
+    originalName: String,
+    mimetype: String,
+    size: Number,
+    path: String
+  }]
 }, { timestamps: true });
 
 module.exports = mongoose.model('Post', PostSchema);

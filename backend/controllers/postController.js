@@ -1,5 +1,7 @@
 const Post = require('../models/Post');
 const mongoose = require('mongoose');
+const fs = require('fs');
+const path = require('path');
 
 const processVote = async (postId, userId, voteType) => {
   const post = await Post.findById(postId);
@@ -44,13 +46,30 @@ const processVote = async (postId, userId, voteType) => {
 };
 
 exports.createPost = async (req, res) => {
-  const newPost = new Post({
-    title: req.body.title,
-    contentMarkdown: req.body.contentMarkdown,
-    author: req.user.id,
-    tags: req.body.tags || []
-  });
   try {
+    const attachments = [];
+    
+    // Process uploaded files if any
+    if (req.files && req.files.length > 0) {
+      req.files.forEach(file => {
+        attachments.push({
+          filename: file.filename,
+          originalName: file.originalname,
+          mimetype: file.mimetype,
+          size: file.size,
+          path: file.path
+        });
+      });
+    }
+
+    const newPost = new Post({
+      title: req.body.title,
+      contentMarkdown: req.body.contentMarkdown,
+      author: req.user.id,
+      tags: req.body.tags || [],
+      attachments: attachments
+    });
+
     await newPost.save();
     res.status(201).json(newPost);
   } catch (err) {
@@ -103,6 +122,16 @@ exports.deletePost = async (req, res) => {
     }
     if (post.author.toString() !== req.user.id) {
       return res.status(403).json({ error: 'Unauthorized' });
+    }
+
+    // Delete uploaded files
+    if (post.attachments && post.attachments.length > 0) {
+      post.attachments.forEach(attachment => {
+        const filePath = path.join(__dirname, '..', attachment.path);
+        if (fs.existsSync(filePath)) {
+          fs.unlinkSync(filePath);
+        }
+      });
     }
 
     await post.deleteOne();

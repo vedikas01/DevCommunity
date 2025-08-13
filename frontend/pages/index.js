@@ -51,7 +51,12 @@ export default function Home() {
           <p className="text-center text-gray-500 text-xl py-10">No posts found! Be the first to create one!</p>
         ) : (
           <div className="space-y-4">
-            {posts.map(post => <PostCard key={post._id} post={post} />)}
+            {posts.map(post => (
+              <PostCard 
+                key={post._id} 
+                post={post} 
+              />
+            ))}
           </div>
         )}
       </main>

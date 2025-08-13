@@ -35,6 +35,10 @@ const userSchema = new Schema({
         type: Schema.Types.ObjectId,
         ref: 'User',
     }],
+    isPrivate: {
+        type: Boolean,
+        default: false,
+    },
 }, {
     timestamps: true, 
 });

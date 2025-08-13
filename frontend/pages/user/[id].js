@@ -19,6 +19,15 @@ export default function UserProfile() {
   const [error, setError] = useState(null); 
   const [errorPosts, setErrorPosts] = useState(null); 
   const [isFollowing, setIsFollowing] = useState(false); 
+  const [canViewFull, setCanViewFull] = useState(true);
+  const [showFollowers, setShowFollowers] = useState(false);
+  const [updatingPrivacy, setUpdatingPrivacy] = useState(false);
+
+  const isOwner = isAuthenticated && currentUser && profileUser && currentUser._id === profileUser._id;
+  // Owners should always be able to view their own profile, regardless of privacy setting
+  const effectiveCanViewFull = isOwner || canViewFull;
+
+
 
   const fetchProfileAndPosts = useCallback(async () => {
     if (!id) return; 
@@ -29,12 +38,12 @@ export default function UserProfile() {
     setErrorPosts(null);
 
     try {
-      const profileRes = await axios.get(`/users/${id}`);
+      const profileRes = await axios.get(`/users/${id}`, {
+        headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+      });
       setProfileUser(profileRes.data.user);
-
-      if (currentUser && profileRes.data.user && profileRes.data.user.followers) {
-        setIsFollowing(profileRes.data.user.followers.some(follower => follower._id === currentUser._id));
-      }
+      setIsFollowing(profileRes.data.isFollowing || false);
+      setCanViewFull(profileRes.data.canViewFull ?? true);
 
     } catch (err) {
       setError('Failed to load user profile!');
@@ -52,7 +61,7 @@ export default function UserProfile() {
     } finally {
       setLoadingPosts(false);
     }
-  }, [id, currentUser]);
+  }, [id, token]);
 
   useEffect(() => {
     fetchProfileAndPosts();
@@ -75,12 +84,15 @@ export default function UserProfile() {
         setIsFollowing(false);
         setProfileUser(prev => ({
           ...prev,
-          followers: prev.followers.filter(f => f._id !== currentUser._id)
+          followers: Array.isArray(prev.followers) ? prev.followers.filter(f => f._id !== currentUser._id) : prev.followers - 1
         }));
         updateUser({
           ...currentUser,
           following: currentUser.following.filter(f => f._id !== profileUser._id)
         });
+        if (profileUser.isPrivate) {
+          setCanViewFull(false); // lose access on unfollow for private accounts
+        }
 
       } else {
         res = await axios.post(`/users/${profileUser._id}/follow`, {}, {
@@ -90,18 +102,43 @@ export default function UserProfile() {
         setIsFollowing(true);
         setProfileUser(prev => ({
           ...prev,
-          followers: [...prev.followers, { _id: currentUser._id, username: currentUser.username, avatarUrl: currentUser.avatarUrl }]
+          followers: Array.isArray(prev.followers)
+            ? [...prev.followers, { _id: currentUser._id, username: currentUser.username, avatarUrl: currentUser.avatarUrl }]
+            : (prev.followers + 1)
         }));
          updateUser({
             ...currentUser,
             following: [...currentUser.following, { _id: profileUser._id, username: profileUser.username, avatarUrl: profileUser.avatarUrl }]
          });
+         setCanViewFull(true);
       }
     } catch (error) {
       alert('Failed to update follow status!');
     }
   };
 
+  const handlePrivacyToggle = async () => {
+    if (!isOwner) return;
+    try {
+      setUpdatingPrivacy(true);
+      const res = await axios.patch('/users/me/privacy', { isPrivate: !profileUser.isPrivate }, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      setProfileUser(prev => ({ ...prev, isPrivate: res.data.isPrivate }));
+      // Owners should always have access to their own profile
+      if (!isOwner) {
+        if (res.data.isPrivate && !isFollowing) {
+          setCanViewFull(false);
+        } else {
+          setCanViewFull(true);
+        }
+      }
+    } catch (e) {
+      alert('Failed to update privacy settings');
+    } finally {
+      setUpdatingPrivacy(false);
+    }
+  };
 
   if (loading) {
     return <p className="text-center text-xl text-gray-600 mt-10">Loading user profile...</p>;
@@ -112,28 +149,47 @@ export default function UserProfile() {
   if (!profileUser) {
     return <p className="text-center text-xl text-gray-500 mt-10">User not found!</p>;
   }
+  const followersCount = Array.isArray(profileUser.followers) ? profileUser.followers.length : profileUser.followers || 0;
+  const followingCount = Array.isArray(profileUser.following) ? profileUser.following.length : profileUser.following || 0;
+
   return (
     <div className="container mx-auto p-6 bg-gray-50 min-h-screen">
+      <Head>
+        <title>{profileUser.username} - Profile</title>
+      </Head>
       <div className="bg-white rounded-xl shadow-lg p-8 mb-8 flex flex-col md:flex-row items-center md:items-start space-y-6 md:space-y-0 md:space-x-8 border border-gray-200">
         <div className="flex-shrink-0">
           <img src={`${backendBaseUrl}${profileUser.avatarUrl}`} alt={`${profileUser.username}'s Avatar`}
             className="w-40 h-40 rounded-full object-cover border-4 border-blue-400 shadow-md"/>
         </div>
 
-        <div className="flex-grow text-center md:text-left">
-          <h1 className="text-4xl font-extrabold text-gray-900 mb-2">{profileUser.username}</h1>
-          <p className="text-gray-700 text-lg mb-4">{profileUser.bio || []}</p>
+        <div className="flex-grow text-center md:text-left w-full">
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-4xl font-extrabold text-gray-900 mb-2">{profileUser.username}</h1>
+              <p className="text-gray-700 text-lg mb-4">{effectiveCanViewFull ? (profileUser.bio || '') : (profileUser.isPrivate ? 'This account is private.' : '')}</p>
+            </div>
+            {isOwner && (
+              <div className="flex items-center space-x-3">
+                <label className="flex items-center space-x-2 cursor-pointer">
+                  <input type="checkbox" className="form-checkbox h-5 w-5" checked={!!profileUser.isPrivate} onChange={handlePrivacyToggle} disabled={updatingPrivacy} />
+                  <span className="text-sm text-gray-700">{profileUser.isPrivate ? 'Private' : 'Public'}</span>
+                </label>
+              </div>
+            )}
+          </div>
 
           <div className="flex justify-center md:justify-start space-x-8 mb-6">
-            <div className="text-center">
+            <div className={`text-center ${Array.isArray(profileUser.followers) ? 'cursor-pointer' : ''}`} 
+                 onClick={() => Array.isArray(profileUser.followers) && setShowFollowers(true)}>
               <span className="block text-2xl font-bold text-gray-800">
-                {profileUser.followers ? profileUser.followers.length : 0}
+                {followersCount}
               </span>
               <p className="text-gray-600">Followers</p>
             </div>
             <div className="text-center">
               <span className="block text-2xl font-bold text-gray-800">
-                {profileUser.following ? profileUser.following.length : 0}
+                {followingCount}
               </span>
               <p className="text-gray-600">Following</p>
             </div>
@@ -148,20 +204,62 @@ export default function UserProfile() {
         </div>
       </div>
 
-      <div className="mt-12 pt-8 border-t border-gray-200 w-full">
-        <h3 className="text-2xl font-bold text-gray-800 mb-6 text-center">Posts by {profileUser.username}</h3>
+      {!effectiveCanViewFull ? (
+        <div className="text-center text-gray-600">
+          <p>This profile is private. Follow to view full profile and posts.</p>
+        </div>
+      ) : (
+        <div className="mt-12 pt-8 border-t border-gray-200 w-full">
+          <h3 className="text-2xl font-bold text-gray-800 mb-6 text-center">Posts by {profileUser.username}</h3>
 
-        {loadingPosts ? (
-          <p className="text-center text-gray-500">Loading posts...</p>
-        ) : errorPosts ? (
-          <p className="text-center text-red-500">{errorPosts}</p>
-        ) : userPosts.length > 0 ? (
-          <div className="space-y-6">
-            {userPosts.map(post => <PostCard key={post._id} post={post} />)}
+          {loadingPosts ? (
+            <p className="text-center text-gray-500">Loading posts...</p>
+          ) : errorPosts ? (
+            <p className="text-center text-red-500">{errorPosts}</p>
+          ) : userPosts.length > 0 ? (
+            <div className="space-y-6">
+              {userPosts.map(post => (
+                <PostCard 
+                  key={post._id} 
+                  post={post} 
+                />
+              ))}
+            </div>
+          ) : (
+            <p className="text-center text-gray-500">No posts yet!</p>
+          )}
+        </div>
+      )}
+
+      {showFollowers && Array.isArray(profileUser.followers) && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg shadow-xl p-6 w-96 max-h-[70vh] overflow-y-auto">
+            <div className="flex justify-between items-center mb-4">
+              <h4 className="text-lg font-semibold">Followers</h4>
+              <button className="text-gray-500 hover:text-gray-700" onClick={() => setShowFollowers(false)}>Close</button>
+            </div>
+            {profileUser.followers.length > 0 ? (
+              <ul className="divide-y divide-gray-200">
+                {profileUser.followers.map(f => (
+                  <li key={f._id} className="py-2 flex items-center space-x-3 hover:bg-gray-50 rounded-lg p-2 transition-colors">
+                    <img src={`${backendBaseUrl}${f.avatarUrl}`} alt={f.username} className="w-8 h-8 rounded-full object-cover" />
+                    <button 
+                      onClick={() => {
+                        setShowFollowers(false);
+                        router.push(`/user/${f._id}`);
+                      }}
+                      className="text-gray-800 hover:text-blue-600 font-medium transition-colors cursor-pointer text-left flex-1"
+                    >
+                      {f.username}
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className="text-gray-600">No followers yet.</p>
+            )}
           </div>
-        ) : (
-          <p className="text-center text-gray-500">No posts yet!</p>
-        )}
-      </div>
+        </div>
+      )}
     </div>
   );}

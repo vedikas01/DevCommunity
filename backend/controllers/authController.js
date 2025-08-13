@@ -45,6 +45,7 @@ exports.registerUser = async (req, res) => {
         bio: user.bio,
         followers: user.followers || [],
         following: user.following || [],
+        isPrivate: user.isPrivate,
       },
     });
 
@@ -79,35 +80,20 @@ exports.loginUser = async (req, res) => {
       return res.status(400).json({ success: false, message: 'Email or password is incorrect!' });
     }
 
-    const payload = {
-      user: {
-        id: user._id,
-        username: user.username,
-        email: user.email,
-        avatarUrl: user.avatarUrl,
-        bio: user.bio,
-        followers: user.followers,
-        following: user.following
-      },
-    };
+      // JWT token with consistent payload shape
+    const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, { expiresIn: '1h' });
 
-    // JWT token
-    jwt.sign(payload, process.env.JWT_SECRET,
-      { expiresIn: '1h' }, (err, token) => {
-        if (err) throw err;
-        res.json({
-          success: true,
-          message: 'Logged in successfully!',
-          token,
-          user: user.toObject({
-            transform: (doc, ret) => {
-              delete ret.password;
-              return ret;
-            },
-          }),
-        });
-      }
-    );
+    res.json({
+      success: true,
+      message: 'Logged in successfully!',
+      token,
+      user: user.toObject({
+        transform: (doc, ret) => {
+          delete ret.password;
+          return ret;
+        },
+      }),
+    });
 
   } catch (error) {
     res.status(500).json({ success: false, message: 'Server error' });

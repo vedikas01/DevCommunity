@@ -1,5 +1,6 @@
 const User = require('../models/User');
 const mongoose = require('mongoose');
+const jwt = require('jsonwebtoken');
 
 exports.getUserProfileById = async (req, res) => {
     try {
@@ -15,9 +16,43 @@ exports.getUserProfileById = async (req, res) => {
             return res.status(404).json({ success: false, message: 'User not found!' });
         }
 
+        // Optional auth: decode JWT if provided to identify requester
+        let requesterId;
+        const authHeader = req.header('Authorization');
+        if (authHeader && authHeader.startsWith('Bearer ')) {
+            const token = authHeader.replace('Bearer ', '');
+            try {
+                const verified = jwt.verify(token, process.env.JWT_SECRET);
+                requesterId = verified.id;
+            } catch (e) {
+                // ignore invalid token, treat as unauthenticated
+            }
+        }
+
+        const isOwner = requesterId && requesterId.toString() === userId.toString();
+        const isFollowedByRequester = requesterId
+            ? user.followers.some(f => f._id?.toString?.() === requesterId.toString())
+            : false;
+        // Owners should always be able to view their own profile, regardless of privacy setting
+        const canViewFull = isOwner || !user.isPrivate || isFollowedByRequester;
+
+        const userObj = user.toObject();
+        if (!canViewFull) {
+            userObj.bio = '';
+            // For private profiles, only show counts, not the actual arrays
+            userObj.followers = user.followers ? user.followers.length : 0;
+            userObj.following = user.following ? user.following.length : 0;
+        } else {
+            // For public profiles or authorized users, ensure we have the populated arrays
+            userObj.followers = user.followers || [];
+            userObj.following = user.following || [];
+        }
+
         res.json({
             success: true,
-            user: user.toObject()
+            user: userObj,
+            canViewFull,
+            isFollowing: isFollowedByRequester
         });
     } catch (error) {
         res.status(500).json({ success: false, message: 'Server error' });
@@ -109,5 +144,19 @@ exports.unfollowUser = async (req, res) => {
 
     } catch (error) {
         res.status(500).json({ success: false, message: 'Server error while unfollowing user.' });
+    }
+};
+
+exports.updatePrivacy = async (req, res) => {
+    try {
+        const currentUserId = req.user.id;
+        const { isPrivate } = req.body;
+        const updated = await User.findByIdAndUpdate(currentUserId, { isPrivate: !!isPrivate }, { new: true });
+        if (!updated) {
+            return res.status(404).json({ success: false, message: 'User not found' });
+        }
+        res.json({ success: true, isPrivate: updated.isPrivate });
+    } catch (error) {
+        res.status(500).json({ success: false, message: 'Server error' });
     }
 };
