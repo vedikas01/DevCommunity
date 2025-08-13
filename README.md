@@ -86,6 +86,35 @@ Make sure you have the following installed:
 ```bash
 git clone https://github.com/vedikas01/DevCommunity.git
 cd DevCommunity
+```
+### 2. Backend setup
+
+```bash
+cd backend
+cp .env.example .env
+# Update .env with MongoDB URI, Cloudinary config, JWT secret, etc.
+npm install
+npm run dev  # or `npm start` to launch the server
+```
+### 3. Frontend setup
+
+```bash
+cd frontend
+npm install
+npm start  # Runs the React app (usually on http://localhost:3000)
+```
+## ​🌱 Environment Variables
+
+Example `.env` file for the backend
+```env
+PORT=5000
+MONGO_URI=your_mongodb_atlas_connection_string
+JWT_SECRET=your_jwt_secret
+CLOUDINARY_CLOUD_NAME=your_cloud_name
+CLOUDINARY_API_KEY=your_api_key
+CLOUDINARY_API_SECRET=your_api_secret
+```
+
 
 
 
